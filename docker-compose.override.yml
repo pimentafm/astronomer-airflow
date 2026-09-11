@@ -1,0 +1,63 @@
+services:
+  api-server:
+    environment:
+      # The Astro CLI hard-codes this to http://localhost:8080, which is also where Airflow sends
+      # you after logging out. If port 8080 is taken on your machine, the CLI serves the UI on a
+      # different address and that redirect would land on the wrong app. A relative base URL keeps
+      # the redirect on whatever address you are actually using.
+      AIRFLOW__API__BASE_URL: "/"
+      # The local Airflow runs with authentication disabled, so the UI opens straight away and
+      # "Log out" immediately logs you back in. Uncomment the line below for a real login screen;
+      # the credentials are admin/admin (see the Dockerfile).
+      # AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "False"
+  scheduler:
+    networks:
+    - airflow
+  weaviate:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.39.2
+    command: "--host 0.0.0.0 --port '8081' --scheme http"
+    ports:
+    - 8081:8081
+    - "50051:50051"
+    volumes:
+    - ${PWD}/include/weaviate/backup:/var/lib/weaviate/backup
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_APIKEY_ENABLED: 'true'
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: 'readonlykey,adminkey'
+      AUTHENTICATION_APIKEY_USERS: 'jane@doe.com,john@doe.com'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      DEFAULT_VECTORIZER_MODULE: 'text2vec-openai'
+      ENABLE_MODULES: 'text2vec-openai,backup-filesystem,qna-openai'
+      BACKUP_FILESYSTEM_PATH: '/var/lib/weaviate/backup'
+      CLUSTER_HOSTNAME: 'node1'
+    networks:
+    - airflow
+  streamlit:
+    # The uv image is a plain python:3.12 with uv pre-installed. 'uv sync --frozen' installs
+    # exactly what include/streamlit/uv.lock pins, in seconds rather than the minutes pip used to
+    # take, and the uv-cache volume below keeps the downloads between restarts so every start
+    # after the first is near instant.
+    image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+    working_dir: /app/include
+    command: bash -c "uv sync --frozen && uv run --frozen streamlit run --server.enableWebsocketCompression=false --server.enableCORS=false --server.enableXsrfProtection=false app.py"
+    ports:
+      - "8501:8501"
+    volumes:
+      - ${PWD}/include/streamlit:/app/include
+      - ${PWD}/include/model_results:/app/include/model_results
+      - uv-cache:/root/.cache/uv
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  
+    environment:
+      # Keep the virtual environment out of /app/include, which is bind-mounted from the host.
+      UV_PROJECT_ENVIRONMENT: /opt/venv
+    env_file:
+      - .env
+    networks:
+      - airflow
+
+volumes:
+  # Shared uv download cache for the streamlit container, so reinstalling its dependencies after
+  # an 'astro dev restart' does not hit the network again.
+  uv-cache:

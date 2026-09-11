@@ -1,0 +1,6 @@
+# Intentionally empty. Dependencies live in pyproject.toml and are installed by the uv step in
+# the Dockerfile.
+#
+# This file cannot be deleted: the Astro Runtime base image copies it in an ONBUILD trigger that
+# runs before any instruction in our Dockerfile, and the build fails outright if it is missing.
+# Leaving it empty makes the image's own install step a no-op.

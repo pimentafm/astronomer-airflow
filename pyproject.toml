@@ -1,0 +1,35 @@
+[project]
+name = "academy-genai"
+version = "0.1.0"
+description = "Introduction to GenAI with Apache Airflow® - Astronomer Academy module"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+
+# Source of truth for requirements.txt, which the Astro Runtime image installs at build
+# time (see the ONBUILD steps in quay.io/astronomer/astro-runtime). Only list packages the
+# image does NOT already ship; regenerate the file with `uv run poe requirements` or the
+# command documented in the README after changing anything here.
+dependencies = [
+    "apache-airflow-providers-weaviate==3.4.1",
+    "langchain==0.3.30",
+    # Required by Airflow 3 to serialize pandas DataFrames passed between tasks via XCom.
+    "pyarrow==25.0.1",
+]
+
+[dependency-groups]
+# Already pre-installed in the Astro Runtime image, pinned here to the exact versions of
+# quay.io/astronomer/astro-runtime:3.3-7-python-3.12 so the local .venv matches the
+# containers. Excluded from requirements.txt - reinstalling Airflow in the image would
+# fight with the version Astronomer ships.
+runtime = [
+    "apache-airflow==3.3.1",
+    "pandas==2.3.3",
+]
+dev = [
+    "pytest>=8.4",
+]
+
+[tool.uv]
+# Not an installable package, just a dependency manifest for the DAGs.
+package = false
+default-groups = ["runtime", "dev"]

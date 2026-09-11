@@ -1,0 +1,15 @@
+[project]
+name = "academy-genai-streamlit"
+version = "0.1.0"
+description = "Streamlit frontend for the Introduction to GenAI with Apache Airflow® module"
+requires-python = ">=3.12,<3.13"
+
+dependencies = [
+    "streamlit==1.63.0",
+    "weaviate-client==4.23.0",
+    "openai==1.109.1",
+]
+
+[tool.uv]
+# Not an installable package, just a dependency manifest for app.py.
+package = false
